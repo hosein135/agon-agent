@@ -1,0 +1,60 @@
+# Default: LF for this Linux / macOS / WSL codebase (also keeps Windows checkouts consistent).
+* text=auto eol=lf
+
+# Source
+*.zig          text eol=lf
+*.js           text eol=lf
+*.jsx          text eol=lf
+*.ts           text eol=lf
+*.tsx          text eol=lf
+*.mjs          text eol=lf
+*.cjs          text eol=lf
+*.css          text eol=lf
+*.sql          text eol=lf
+*.nix          text eol=lf
+*.sh           text eol=lf
+*.json         text eol=lf
+*.md           text eol=lf
+*.svg          text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.toml         text eol=lf
+*.txt          text eol=lf
+*.webmanifest  text eol=lf
+*.html         text eol=lf
+*.lock         text eol=lf
+
+# Dotfiles
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+.env*          text eol=lf
+
+# Windows helpers (if added later)
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=lf
+
+# Binary
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.webp         binary
+*.ico          binary
+*.pdf          binary
+*.zip          binary
+*.gz           binary
+*.xz           binary
+*.7z           binary
+*.xlsx         binary
+*.xls          binary
+*.webm         binary
+*.mp3          binary
+*.woff          binary
+*.woff2         binary
+*.ttf          binary
+*.eot          binary
+*.wasm         binary
+
+# Generated
+frontend/next-env.d.ts linguist-generated=true

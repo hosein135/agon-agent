@@ -1,0 +1,37 @@
+cimport.o: \
+  /mnt/c/Users/Administrator/Desktop/code/agon-agent/backend/.zig-cache/o/bf4b6532f8ec0ec7e307ee7f3daa6ef3/cimport.h \
+  /nix/store/bjhqc4cszb9sz3vc2k1wsnpmgqjba585-postgresql-17.6-dev/include/libpq-fe.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/stdio.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/libc-header-start.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/features.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/features-time64.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/bits/wordsize.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/bits/timesize.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/stdc-predef.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/sys/cdefs.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/bits/long-double.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/gnu/stubs.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/gnu/stubs-64.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/include/stddef.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/include/__stddef_size_t.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/include/__stddef_null.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/include/stdarg.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/include/__stdarg___gnuc_va_list.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/bits/typesizes.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/time64.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/__fpos_t.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/__mbstate_t.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/__fpos64_t.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/__FILE.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/FILE.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/struct_FILE.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/types/cookie_io_functions_t.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/stdio_lim.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/x86_64-linux-gnu/bits/floatn.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/floatn-common.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/stdio2-decl.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/stdio.h \
+  /nix/store/psm1hb0ah8wa2a85qw256zsvkqmg5xs0-zig-0.13.0/lib/zig/libc/include/generic-glibc/bits/stdio2.h \
+  /nix/store/bjhqc4cszb9sz3vc2k1wsnpmgqjba585-postgresql-17.6-dev/include/postgres_ext.h \
+  /nix/store/bjhqc4cszb9sz3vc2k1wsnpmgqjba585-postgresql-17.6-dev/include/pg_config_ext.h
