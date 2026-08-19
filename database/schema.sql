@@ -293,6 +293,31 @@ CREATE TABLE IF NOT EXISTS staff_chats (
 );
 
 -- ---------------------------------------------------------------------------
+-- Uploaded files (receipts, expense invoices, voice notes)
+-- Stored in PostgreSQL so managers can browse them without a shared UPLOAD_DIR.
+-- Rows older than 60 days are deleted automatically by the API.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS uploads (
+    id               BIGSERIAL PRIMARY KEY,
+    public_id        TEXT NOT NULL UNIQUE,
+    original_name    TEXT NOT NULL DEFAULT '',
+    content_type     TEXT NOT NULL DEFAULT 'application/octet-stream',
+    kind             TEXT NOT NULL DEFAULT 'file',
+    unit_name        TEXT NOT NULL DEFAULT '',
+    block_number     TEXT NOT NULL DEFAULT '',
+    block_direction  TEXT NOT NULL DEFAULT '',
+    created_by       TEXT NOT NULL DEFAULT '',
+    byte_size        INTEGER NOT NULL DEFAULT 0,
+    content          BYTEA NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS uploads_created_at_idx ON uploads (created_at);
+CREATE INDEX IF NOT EXISTS uploads_block_idx ON uploads (block_number, block_direction);
+CREATE INDEX IF NOT EXISTS uploads_kind_idx ON uploads (kind);
+
+-- ---------------------------------------------------------------------------
 -- Seed (idempotent)
 -- Default system admin: username=admin  password=admin
 -- ---------------------------------------------------------------------------

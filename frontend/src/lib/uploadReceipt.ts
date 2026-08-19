@@ -43,11 +43,19 @@ export async function uploadReceiptToStorage({
   file,
   unit_name,
   bill_id,
+  kind = 'receipt',
+  block_number,
+  block_direction,
+  created_by,
   onProgress,
 }: {
   file?: File | Blob | null
   unit_name?: string
   bill_id?: number | string
+  kind?: string
+  block_number?: string
+  block_direction?: string
+  created_by?: string
   onProgress?: (msg: string) => void
 }) {
   onProgress?.('در حال فشرده‌سازی تصویر...')
@@ -67,6 +75,10 @@ export async function uploadReceiptToStorage({
         action: 'sign',
         unit_name,
         bill_id,
+        kind,
+        block_number,
+        block_direction,
+        created_by,
         fileName: prepared.fileName,
         contentType: prepared.contentType || 'image/jpeg',
       }),
@@ -129,6 +141,10 @@ export async function uploadReceiptToStorage({
       contentType: prepared.contentType || 'image/jpeg',
       unit_name,
       bill_id,
+      kind,
+      block_number,
+      block_direction,
+      created_by,
     }),
   })
   const upData = await parseJsonResponse(upRes)

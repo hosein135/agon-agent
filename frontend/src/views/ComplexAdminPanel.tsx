@@ -20,6 +20,7 @@ import {
   ArrowRight,
   UsersRound,
   Wrench,
+  Images,
 } from 'lucide-react'
 import { clearSession, getSession, saveSession } from '../lib/session'
 import { toEnglishDigits, onlyDigits } from '../lib/digits'
@@ -41,6 +42,7 @@ import ComplexMonthlyCharge from '../components/ComplexMonthlyCharge'
 import ComplexBoardManager from '../components/ComplexBoardManager'
 import BoardWorkOrders from '../components/BoardWorkOrders'
 import ComplexPeopleDirectory from '../components/ComplexPeopleDirectory'
+import ManagerUploads from '../components/ManagerUploads'
 import { BreadcrumbBar, EntityCard } from '../components/ManagerUiBits'
 
 const STATUSES = ['دریافت شده', 'در حال بررسی', 'تایید شده', 'تایید نشده']
@@ -157,6 +159,12 @@ export default function ComplexAdminPanel() {
             icon: Users,
           },
           { id: 'io_hint', label: 'اکسل و جدول واحدها', desc: 'از لایه هر بلوک', icon: FileSpreadsheet },
+          {
+            id: 'uploads_browser',
+            label: 'فایل‌های آپلود شده',
+            desc: 'رسید، فاکتور و صوت همه بلوک‌ها — نگهداری ۶۰ روز',
+            icon: Images,
+          },
         ],
       },
     ],
@@ -663,6 +671,7 @@ export default function ComplexAdminPanel() {
         {subTab === 'io_hint' && (
           <Empty text="جدول واحدها، ورود/خروجی اکسل و پشتیبان در لایه هر بلوک (مشابه مدیر بلوک) در دسترس است." />
         )}
+        {subTab === 'uploads_browser' && <ManagerUploads admin={admin} scope="all" />}
       </div>
     </ManagerShell>
   )

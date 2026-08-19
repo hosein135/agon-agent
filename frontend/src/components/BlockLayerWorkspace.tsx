@@ -14,6 +14,7 @@ import {
   HardDriveUpload,
   List,
   Shield,
+  Images,
 } from 'lucide-react'
 import { toEnglishDigits, onlyDigits } from '../lib/digits'
 import { BLOCK_SUB_TAB_KEYS, fetchMessageCounts, markTabsRead, blockManagerAudienceKeys } from '../lib/messages'
@@ -29,6 +30,7 @@ import BlockExpenses from './BlockExpenses'
 import ManagerUnitsReport from './ManagerUnitsReport'
 import UnitsExcelTools from './UnitsExcelTools'
 import ManagerBackupRestore from './ManagerBackupRestore'
+import ManagerUploads from './ManagerUploads'
 import type { AdminUser, MenuSection } from '../types'
 
 function sameBlock(a, b) {
@@ -124,6 +126,7 @@ export default function BlockLayerWorkspace({
           { id: 'excel_export', label: 'خروجی اکسل', desc: 'Export', icon: FileSpreadsheet },
           { id: 'backup_data', label: 'پشتیبان‌گیری', desc: 'ذخیره روی دستگاه', icon: HardDriveDownload },
           { id: 'restore_data', label: 'بازیابی از پشتیبان', desc: 'برگرداندن اطلاعات', icon: HardDriveUpload },
+          { id: 'uploads_browser', label: 'فایل‌های آپلود شده', desc: 'رسید، فاکتور و صوت — نگهداری ۶۰ روز', icon: Images },
         ],
       },
       ...extraSections,
@@ -306,6 +309,9 @@ export default function BlockLayerWorkspace({
         )}
         {activeSection === 'io_section' && subTab === 'restore_data' && (
           <ManagerBackupRestore admin={admin} mode="restore" onRestored={loadResidents} />
+        )}
+        {activeSection === 'io_section' && subTab === 'uploads_browser' && (
+          <ManagerUploads admin={admin} scope="block" />
         )}
       </div>
     </div>

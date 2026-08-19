@@ -356,7 +356,11 @@ export default function BlockExpenses({
         fileBase64: prepared.base64,
         fileName: prepared.fileName || 'expense.jpg',
         contentType: prepared.contentType || 'image/jpeg',
+        kind: 'expense',
         unit_name: `block-${admin.block_number || 'x'}`,
+        block_number: admin.block_number,
+        block_direction: admin.block_direction,
+        created_by: admin.full_name || 'مدیر بلوک',
         bill_id: `exp_${Date.now()}`,
       }),
     })

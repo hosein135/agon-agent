@@ -143,6 +143,22 @@ pub fn nowIso(allocator: std.mem.Allocator) ![]u8 {
     return std.fmt.allocPrint(allocator, "{d}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{ days, hours, mins, secs });
 }
 
+const db = @import("db.zig");
+
+pub const max_upload_bytes: usize = 20 * 1024 * 1024;
+const hex_digits = "0123456789abcdef";
+
+pub const UploadMeta = struct {
+    ext: []const u8,
+    original_name: []const u8 = "",
+    content_type: []const u8 = "",
+    kind: []const u8 = "file",
+    unit_name: []const u8 = "",
+    block_number: []const u8 = "",
+    block_direction: []const u8 = "",
+    created_by: []const u8 = "",
+};
+
 pub fn uploadDir() []const u8 {
     if (@hasDecl(std.posix, "getenv")) {
         if (std.posix.getenv("UPLOAD_DIR")) |v| return v;
@@ -150,13 +166,9 @@ pub fn uploadDir() []const u8 {
     return "backend/uploads";
 }
 
-pub fn decodeDataUrl(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
-    var payload = raw;
-    if (std.mem.indexOf(u8, raw, "base64,")) |idx| {
-        payload = raw[idx + 7 ..];
-    }
+pub fn decodeBase64(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
     var cleaned = std.ArrayList(u8).init(allocator);
-    for (payload) |ch| {
+    for (raw) |ch| {
         if (ch != ' ' and ch != '\n' and ch != '\r' and ch != '\t') try cleaned.append(ch);
     }
     const encoded = cleaned.items;
@@ -167,14 +179,109 @@ pub fn decodeDataUrl(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
     return out;
 }
 
-pub fn saveUpload(allocator: std.mem.Allocator, bytes: []const u8, ext: []const u8) ![]u8 {
-    const dir = uploadDir();
-    std.fs.cwd().makePath(dir) catch {};
+pub fn decodeDataUrl(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
+    var payload = raw;
+    if (std.mem.indexOf(u8, raw, "base64,")) |idx| {
+        payload = raw[idx + 7 ..];
+    }
+    return decodeBase64(allocator, payload);
+}
+
+fn sanitizeExt(ext: []const u8) []const u8 {
+    if (ext.len == 0 or ext.len > 8) return "bin";
+    for (ext) |ch| {
+        const ok = (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9');
+        if (!ok) return "bin";
+    }
+    return ext;
+}
+
+pub fn guessContentType(ext: []const u8, fallback: []const u8) []const u8 {
+    if (eql(ext, "pdf")) return "application/pdf";
+    if (eql(ext, "webm")) return "audio/webm";
+    if (eql(ext, "png")) return "image/png";
+    if (eql(ext, "jpg") or eql(ext, "jpeg")) return "image/jpeg";
+    if (fallback.len > 0) return fallback;
+    return "application/octet-stream";
+}
+
+fn toHex(allocator: std.mem.Allocator, bytes: []const u8) ![]u8 {
+    const out = try allocator.alloc(u8, bytes.len * 2);
+    for (bytes, 0..) |b, i| {
+        out[i * 2] = hex_digits[b >> 4];
+        out[i * 2 + 1] = hex_digits[b & 15];
+    }
+    return out;
+}
+
+pub fn saveUpload(allocator: std.mem.Allocator, bytes: []const u8, meta: UploadMeta) ![]u8 {
+    if (bytes.len == 0) return error.EmptyUpload;
+    if (bytes.len > max_upload_bytes) return error.TooLarge;
+
+    db.purgeExpiredUploads(allocator) catch {};
+    purgeDiskUploads() catch {};
+
+    const ext = sanitizeExt(meta.ext);
+    const ctype = if (meta.content_type.len > 0) meta.content_type else guessContentType(ext, "");
+    const kind = if (meta.kind.len > 0) meta.kind else "file";
+    var rnd: [4]u8 = undefined;
+    std.crypto.random.bytes(&rnd);
     const stamp = std.time.milliTimestamp();
-    const name = try std.fmt.allocPrint(allocator, "{d}_{d}.{s}", .{ stamp, bytes.len % 997, ext });
-    const rel = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir, name });
-    var file = try std.fs.cwd().createFile(rel, .{});
-    defer file.close();
-    try file.writeAll(bytes);
+    const public_id = try std.fmt.allocPrint(
+        allocator,
+        "{d}_{x:0>2}{x:0>2}{x:0>2}{x:0>2}.{s}",
+        .{ stamp, rnd[0], rnd[1], rnd[2], rnd[3], ext },
+    );
+    const hex = try toHex(allocator, bytes);
+    const orig = if (meta.original_name.len > 0) meta.original_name else public_id;
+    const sql = try std.fmt.allocPrint(allocator,
+        \\INSERT INTO uploads (public_id, original_name, content_type, kind, unit_name, block_number, block_direction, created_by, byte_size, content)
+        \\VALUES ({s},{s},{s},{s},{s},{s},{s},{s},{d}, decode('{s}', 'hex'))
+        \\RETURNING public_id
+    , .{
+        try db.lit(allocator, public_id),
+        try db.lit(allocator, orig),
+        try db.lit(allocator, ctype),
+        try db.lit(allocator, kind),
+        try db.lit(allocator, meta.unit_name),
+        try db.lit(allocator, meta.block_number),
+        try db.lit(allocator, meta.block_direction),
+        try db.lit(allocator, meta.created_by),
+        bytes.len,
+        hex,
+    });
+    const returned = db.exec(allocator, sql) catch return error.Sql;
+    const id = std.mem.trim(u8, returned, " \n\r\t\"");
+    const name = if (id.len > 0) id else public_id;
     return std.fmt.allocPrint(allocator, "/uploads/{s}", .{name});
+}
+
+pub fn isSafeUploadName(name: []const u8) bool {
+    if (name.len == 0 or name.len > 180) return false;
+    if (eql(name, ".") or eql(name, "..")) return false;
+    for (name) |ch| {
+        const ok = (ch >= 'a' and ch <= 'z') or
+            (ch >= 'A' and ch <= 'Z') or
+            (ch >= '0' and ch <= '9') or
+            ch == '_' or ch == '-' or ch == '.';
+        if (!ok) return false;
+    }
+    return true;
+}
+
+pub fn purgeDiskUploads() !void {
+    const dir_path = uploadDir();
+    var dir = std.fs.cwd().openDir(dir_path, .{ .iterate = true }) catch return;
+    defer dir.close();
+    const cutoff_ns: i128 = @as(i128, std.time.nanoTimestamp()) - @as(i128, 60) * 24 * 60 * 60 * std.time.ns_per_s;
+    var it = dir.iterate();
+    while (true) {
+        const next = it.next() catch break;
+        const entry = next orelse break;
+        if (entry.kind != .file) continue;
+        const st = dir.statFile(entry.name) catch continue;
+        if (st.mtime < cutoff_ns) {
+            dir.deleteFile(entry.name) catch {};
+        }
+    }
 }

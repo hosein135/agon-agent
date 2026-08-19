@@ -394,6 +394,10 @@ export default function ResidentBills({
         file,
         unit_name: user.unit_name,
         bill_id: bill.id,
+        kind: 'receipt',
+        block_number: user.block_number,
+        block_direction: user.block_direction,
+        created_by: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.unit_name,
         onProgress: setProgress,
       })
       if (!up?.url) throw new Error('آدرس فایل بعد از آپلود ساخته نشد')

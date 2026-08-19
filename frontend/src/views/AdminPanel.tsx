@@ -17,6 +17,7 @@ import {
   Receipt,
   CloudUpload,
   BookOpen,
+  Images,
 } from 'lucide-react'
 import { clearSession, getSession, saveSession } from '../lib/session'
 import { toEnglishDigits, onlyDigits } from '../lib/digits'
@@ -31,6 +32,7 @@ import SlideDropdownMenu from '../components/SlideDropdownMenu'
 import BlockLayerWorkspace from '../components/BlockLayerWorkspace'
 import StaffChat from '../components/StaffChat'
 import CloudTransferGuide from '../components/CloudTransferGuide'
+import ManagerUploads from '../components/ManagerUploads'
 import { BreadcrumbBar, EntityCard } from '../components/ManagerUiBits'
 
 const STATUSES = ['دریافت شده', 'در حال بررسی', 'تایید شده', 'تایید نشده']
@@ -107,6 +109,12 @@ export default function AdminPanel() {
             label: 'اکسل و پشتیبان',
             desc: 'در لایه هر بلوک',
             icon: FileSpreadsheet,
+          },
+          {
+            id: 'uploads_browser',
+            label: 'فایل‌های آپلود شده',
+            desc: 'رسید، فاکتور و صوت — نگهداری ۶۰ روز',
+            icon: Images,
           },
           {
             id: 'cloud_transfer_guide',
@@ -726,6 +734,7 @@ export default function AdminPanel() {
             </button>
           </div>
         )}
+        {subTab === 'uploads_browser' && <ManagerUploads admin={admin} scope="all" />}
         {subTab === 'cloud_transfer_guide' && <CloudTransferGuide />}
       </div>
     </ManagerShell>

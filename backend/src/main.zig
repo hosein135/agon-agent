@@ -2,6 +2,7 @@ const std = @import("std");
 const db = @import("db.zig");
 const http = @import("http.zig");
 const handlers = @import("handlers.zig");
+const util = @import("util.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,7 +15,16 @@ pub fn main() !void {
         db.ensureSessionsTable(arena.allocator()) catch |err| {
             std.log.err("ensure sessions table: {}", .{err});
         };
+        db.ensureUploadsTable(arena.allocator()) catch |err| {
+            std.log.err("ensure uploads table: {}", .{err});
+        };
+        db.purgeExpiredUploads(arena.allocator()) catch |err| {
+            std.log.err("purge expired uploads: {}", .{err});
+        };
+        util.purgeDiskUploads() catch {};
     }
+    const purge_thread = std.Thread.spawn(.{}, purgeUploadsLoop, .{}) catch null;
+    if (purge_thread) |t| t.detach();
     std.log.info("postgres connected", .{});
 
     const host = envOr("HOST", "0.0.0.0");
@@ -67,4 +77,16 @@ fn envOr(key: []const u8, fallback: []const u8) []const u8 {
         if (std.posix.getenv(key)) |v| return v;
     } else if (std.os.getenv(key)) |v| return v;
     return fallback;
+}
+
+fn purgeUploadsLoop() void {
+    while (true) {
+        std.time.sleep(60 * 60 * std.time.ns_per_s);
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        db.purgeExpiredUploads(arena.allocator()) catch |err| {
+            std.log.err("purge expired uploads: {}", .{err});
+        };
+        util.purgeDiskUploads() catch {};
+    }
 }

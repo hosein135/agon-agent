@@ -82,6 +82,7 @@ pub fn dispatch(ctx: Ctx) !void {
     if (util.eql(p, "/api/receipts")) return receipts(ctx);
     if (util.eql(p, "/api/payment-receipts")) return paymentReceipts(ctx);
     if (util.eql(p, "/api/receipt-upload")) return receiptUpload(ctx);
+    if (util.eql(p, "/api/uploads")) return uploadsApi(ctx);
     if (util.eql(p, "/api/block-expenses")) return blockExpenses(ctx);
     if (util.eql(p, "/api/block-finance")) return blockFinance(ctx);
     if (util.eql(p, "/api/block-backup")) return blockBackup(ctx);
@@ -976,7 +977,16 @@ fn bills(ctx: Ctx) !void {
                 const b64 = try util.jsonStrAlloc(ctx.allocator, body, "fileBase64");
                 if (b64.len > 0) {
                     const bytes = util.decodeDataUrl(ctx.allocator, b64) catch return ctx.fail(400, "فایل نامعتبر است");
-                    url = try util.saveUpload(ctx.allocator, bytes, "jpg");
+                    url = (try trySaveUpload(ctx, bytes, .{
+                        .ext = "jpg",
+                        .kind = "receipt",
+                        .original_name = "receipt.jpg",
+                        .content_type = "image/jpeg",
+                        .unit_name = unit,
+                        .block_number = try util.jsonStrAlloc(ctx.allocator, body, "block_number"),
+                        .block_direction = try util.jsonStrAlloc(ctx.allocator, body, "block_direction"),
+                        .created_by = try util.jsonStrAlloc(ctx.allocator, body, "created_by"),
+                    })) orelse return;
                 }
             }
             if (url.len == 0) return ctx.fail(400, "پیوست رسید الزامی است");
@@ -1142,9 +1152,66 @@ fn receiptUpload(ctx: Ctx) !void {
     const bytes = util.decodeDataUrl(ctx.allocator, b64) catch return ctx.fail(400, "فایل نامعتبر است");
     const name = try util.jsonStrAlloc(ctx.allocator, body, "fileName");
     const ext: []const u8 = if (std.mem.endsWith(u8, name, ".pdf")) "pdf" else "jpg";
-    const url = try util.saveUpload(ctx.allocator, bytes, ext);
+    const kind_in = try util.jsonStrAlloc(ctx.allocator, body, "kind");
+    const url = (try trySaveUpload(ctx, bytes, .{
+        .ext = ext,
+        .original_name = if (name.len > 0) name else "upload",
+        .content_type = try util.jsonStrAlloc(ctx.allocator, body, "contentType"),
+        .kind = if (kind_in.len > 0) kind_in else "receipt",
+        .unit_name = try util.jsonStrAlloc(ctx.allocator, body, "unit_name"),
+        .block_number = try util.jsonStrAlloc(ctx.allocator, body, "block_number"),
+        .block_direction = try util.jsonStrAlloc(ctx.allocator, body, "block_direction"),
+        .created_by = try util.jsonStrAlloc(ctx.allocator, body, "created_by"),
+    })) orelse return;
     const out = try std.fmt.allocPrint(ctx.allocator, "{{\"ok\":true,\"url\":{s}}}", .{try jsonEncode(ctx.allocator, url)});
     return ctx.send(200, out);
+}
+
+fn uploadsApi(ctx: Ctx) !void {
+    db.purgeExpiredUploads(ctx.allocator) catch {};
+    util.purgeDiskUploads() catch {};
+    if (util.eql(ctx.m(), "GET")) {
+        var sql = std.ArrayList(u8).init(ctx.allocator);
+        try sql.appendSlice(
+            \\SELECT id, public_id, original_name, content_type, kind, unit_name, block_number, block_direction,
+            \\       created_by, byte_size, created_at,
+            \\       ('/uploads/' || public_id) AS url,
+            \\       (created_at + interval '60 days') AS expires_at
+            \\FROM uploads WHERE 1=1
+        );
+        if (ctx.q("block_number").len > 0) try sql.writer().print(" AND block_number = {s}", .{try ctx.lit(ctx.q("block_number"))});
+        if (ctx.q("block_direction").len > 0) try sql.writer().print(" AND block_direction = {s}", .{try ctx.lit(ctx.q("block_direction"))});
+        if (ctx.q("kind").len > 0) try sql.writer().print(" AND kind = {s}", .{try ctx.lit(ctx.q("kind"))});
+        if (ctx.q("unit_name").len > 0) try sql.writer().print(" AND unit_name = {s}", .{try ctx.lit(ctx.q("unit_name"))});
+        try sql.appendSlice(" ORDER BY created_at DESC LIMIT 500");
+        const items = try db.jsonAgg(ctx.allocator, sql.items);
+        var stats_sql = std.ArrayList(u8).init(ctx.allocator);
+        try stats_sql.appendSlice("SELECT count(*)::int AS count, COALESCE(sum(byte_size),0)::bigint AS bytes FROM uploads WHERE 1=1");
+        if (ctx.q("block_number").len > 0) try stats_sql.writer().print(" AND block_number = {s}", .{try ctx.lit(ctx.q("block_number"))});
+        if (ctx.q("block_direction").len > 0) try stats_sql.writer().print(" AND block_direction = {s}", .{try ctx.lit(ctx.q("block_direction"))});
+        if (ctx.q("kind").len > 0) try stats_sql.writer().print(" AND kind = {s}", .{try ctx.lit(ctx.q("kind"))});
+        if (ctx.q("unit_name").len > 0) try stats_sql.writer().print(" AND unit_name = {s}", .{try ctx.lit(ctx.q("unit_name"))});
+        const stats = try db.jsonRow(ctx.allocator, stats_sql.items);
+        const out = try std.fmt.allocPrint(
+            ctx.allocator,
+            "{{\"items\":{s},\"stats\":{s},\"retention_days\":60}}",
+            .{ items, stats },
+        );
+        return ctx.send(200, out);
+    }
+    if (util.eql(ctx.m(), "DELETE")) {
+        const body = ctx.json() catch return ctx.fail(400, "بدنه نامعتبر است");
+        const id = try util.jsonStrAlloc(ctx.allocator, body, "id");
+        const public_id = try util.jsonStrAlloc(ctx.allocator, body, "public_id");
+        if (id.len > 0) {
+            try db.execOk(ctx.allocator, try std.fmt.allocPrint(ctx.allocator, "DELETE FROM uploads WHERE id = {d}", .{try parseId(id)}));
+        } else if (public_id.len > 0) {
+            if (!util.isSafeUploadName(public_id)) return ctx.fail(400, "شناسه فایل نامعتبر است");
+            try db.execOk(ctx.allocator, try std.fmt.allocPrint(ctx.allocator, "DELETE FROM uploads WHERE public_id = {s}", .{try ctx.lit(public_id)}));
+        } else return ctx.fail(400, "شناسه فایل الزامی است");
+        return ctx.send(200, "{\"ok\":true}");
+    }
+    return ctx.fail(405, "Method not allowed");
 }
 
 fn blockExpenses(ctx: Ctx) !void {
@@ -1374,7 +1441,14 @@ fn publicChat(ctx: Ctx) !void {
         if (util.eql(mtype, "voice")) {
             const b64 = try util.jsonStrAlloc(ctx.allocator, body, "audio_base64");
             const bytes = util.decodeDataUrl(ctx.allocator, b64) catch return ctx.fail(400, "فایل صوتی الزامی است");
-            audio_url = try util.saveUpload(ctx.allocator, bytes, "webm");
+            audio_url = (try trySaveUpload(ctx, bytes, .{
+                .ext = "webm",
+                .kind = "voice",
+                .original_name = "voice.webm",
+                .content_type = "audio/webm",
+                .unit_name = try util.jsonStrAlloc(ctx.allocator, body, "unit_name"),
+                .created_by = try util.jsonStrAlloc(ctx.allocator, body, "sender_name"),
+            })) orelse return;
             if (text.len == 0) text = "🎤 پیام صوتی";
         } else if (text.len == 0) return ctx.fail(400, "متن پیام الزامی است");
         const ins = try std.fmt.allocPrint(ctx.allocator,
@@ -1415,7 +1489,16 @@ fn privateChat(ctx: Ctx) !void {
         if (util.eql(mtype, "voice")) {
             const b64 = try util.jsonStrAlloc(ctx.allocator, body, "audio_base64");
             const bytes = util.decodeDataUrl(ctx.allocator, b64) catch return ctx.fail(400, "فایل صوتی الزامی است");
-            audio_url = try util.saveUpload(ctx.allocator, bytes, "webm");
+            audio_url = (try trySaveUpload(ctx, bytes, .{
+                .ext = "webm",
+                .kind = "voice",
+                .original_name = "voice.webm",
+                .content_type = "audio/webm",
+                .unit_name = try util.jsonStrAlloc(ctx.allocator, body, "unit_name"),
+                .block_number = try util.jsonStrAlloc(ctx.allocator, body, "block_number"),
+                .block_direction = try util.jsonStrAlloc(ctx.allocator, body, "block_direction"),
+                .created_by = try util.jsonStrAlloc(ctx.allocator, body, "sender_name"),
+            })) orelse return;
             if (text.len == 0) text = "🎤 پیام صوتی";
         }
         const ins = try std.fmt.allocPrint(ctx.allocator,
@@ -1476,7 +1559,15 @@ fn staffChat(ctx: Ctx) !void {
     if (util.eql(mtype, "voice")) {
         const b64 = try util.jsonStrAlloc(ctx.allocator, body, "audio_base64");
         const bytes = util.decodeDataUrl(ctx.allocator, b64) catch return ctx.fail(400, "فایل صوتی الزامی است");
-        audio_url = try util.saveUpload(ctx.allocator, bytes, "webm");
+        audio_url = (try trySaveUpload(ctx, bytes, .{
+            .ext = "webm",
+            .kind = "voice",
+            .original_name = "voice.webm",
+            .content_type = "audio/webm",
+            .block_number = bn,
+            .block_direction = bd,
+            .created_by = try util.jsonStrAlloc(ctx.allocator, body, "sender_name"),
+        })) orelse return;
         if (text.len == 0) text = "🎤 پیام صوتی";
     }
     const ins = try std.fmt.allocPrint(ctx.allocator,
@@ -1609,14 +1700,31 @@ fn unitsImport(ctx: Ctx) !void {
 
 fn serveUpload(ctx: Ctx) !void {
     const name = ctx.req.path["/uploads/".len..];
-    if (name.len == 0 or std.mem.indexOfScalar(u8, name, '/') != null or std.mem.indexOfScalar(u8, name, '\\') != null) {
+    if (!util.isSafeUploadName(name)) {
         return ctx.fail(404, "Not found");
+    }
+    const row = db.jsonRow(ctx.allocator, try std.fmt.allocPrint(
+        ctx.allocator,
+        "SELECT encode(content, 'base64') AS content_b64, content_type, original_name FROM uploads WHERE public_id = {s}",
+        .{try ctx.lit(name)},
+    )) catch "null";
+    if (!util.eql(row, "null")) {
+        const parsed = try std.json.parseFromSlice(std.json.Value, ctx.allocator, row, .{});
+        const b64 = try util.jsonStrAlloc(ctx.allocator, parsed.value, "content_b64");
+        const data = util.decodeBase64(ctx.allocator, b64) catch return ctx.fail(500, "خواندن فایل ناموفق بود");
+        var ctype = try util.jsonStrAlloc(ctx.allocator, parsed.value, "content_type");
+        if (ctype.len == 0) {
+            const ext = extFromName(name);
+            ctype = util.guessContentType(ext, "application/octet-stream");
+        }
+        try http.send(ctx.stream, 200, "OK", ctype, data);
+        return;
     }
     const dir = util.uploadDir();
     const path = try std.fmt.allocPrint(ctx.allocator, "{s}/{s}", .{ dir, name });
     const file = std.fs.cwd().openFile(path, .{}) catch return ctx.fail(404, "Not found");
     defer file.close();
-    const data = try file.readToEndAlloc(ctx.allocator, 20 * 1024 * 1024);
+    const data = try file.readToEndAlloc(ctx.allocator, util.max_upload_bytes);
     const ctype: []const u8 = if (std.mem.endsWith(u8, name, ".pdf")) "application/pdf" else if (std.mem.endsWith(u8, name, ".webm")) "audio/webm" else "image/jpeg";
     try http.send(ctx.stream, 200, "OK", ctype, data);
 }
@@ -1658,6 +1766,24 @@ fn addSet(sets: *std.ArrayList(u8), ctx: Ctx, body: std.json.Value, key: []const
     const val = try util.jsonStrAlloc(ctx.allocator, body, key);
     if (sets.items.len > 0) try sets.appendSlice(", ");
     try sets.writer().print("{s} = {s}", .{ key, try ctx.lit(val) });
+}
+
+fn trySaveUpload(ctx: Ctx, bytes: []const u8, meta: util.UploadMeta) !?[]u8 {
+    return util.saveUpload(ctx.allocator, bytes, meta) catch |err| {
+        switch (err) {
+            error.EmptyUpload => try ctx.fail(400, "فایل خالی است"),
+            error.TooLarge => try ctx.fail(400, "حجم فایل زیاد است"),
+            else => try ctx.fail(500, "ذخیره فایل ناموفق بود"),
+        }
+        return null;
+    };
+}
+
+fn extFromName(name: []const u8) []const u8 {
+    if (std.mem.lastIndexOfScalar(u8, name, '.')) |i| {
+        if (i + 1 < name.len) return name[i + 1 ..];
+    }
+    return "";
 }
 
 fn parseId(s: []const u8) !i64 {

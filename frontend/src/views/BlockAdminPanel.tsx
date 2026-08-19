@@ -29,6 +29,7 @@ import {
   HardDriveDownload,
   HardDriveUpload,
   Wrench,
+  Images,
 } from 'lucide-react'
 import { clearSession, getSession, saveSession } from '../lib/session'
 import { toEnglishDigits } from '../lib/digits'
@@ -53,6 +54,7 @@ import SlideDropdownMenu from '../components/SlideDropdownMenu'
 import AppLinkTab from '../components/AppLinkTab'
 import InstallAppTab from '../components/InstallAppTab'
 import BoardWorkOrders from '../components/BoardWorkOrders'
+import ManagerUploads from '../components/ManagerUploads'
 
 const DESIGN_KEY = 'block7_block_admin_design_v3'
 
@@ -100,6 +102,7 @@ const MAIN_SECTIONS = [
       { id: 'excel_export', label: 'خروجی اکسل', desc: 'Export فایل CSV/Excel', icon: FileSpreadsheet },
       { id: 'backup_data', label: 'پشتیبان‌گیری', desc: 'ذخیره اطلاعات روی دستگاه', icon: HardDriveDownload },
       { id: 'restore_data', label: 'بازیابی از پشتیبان', desc: 'برگرداندن اطلاعات ذخیره‌شده', icon: HardDriveUpload },
+      { id: 'uploads_browser', label: 'فایل‌های آپلود شده', desc: 'رسید، فاکتور و صوت — نگهداری ۶۰ روز', icon: Images },
     ],
   },
 ]
@@ -707,6 +710,10 @@ export default function BlockAdminPanel() {
                   mode="restore"
                   onRestored={() => loadData(admin, { soft: true })}
                 />
+              )}
+
+              {activeSection === 'io_section' && subTab === 'uploads_browser' && (
+                <ManagerUploads admin={admin} scope="block" />
               )}
 
               {subTab === 'app_link' && <AppLinkTab />}

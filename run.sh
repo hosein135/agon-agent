@@ -507,7 +507,7 @@ collect_dev_origins() {
 
 export_runtime_env() {
     choose_agon_data
-    mkdir -p "${AGON_DATA}" "${SCRIPT_DIR}/backend/uploads"
+    mkdir -p "${AGON_DATA}"
     export PGHOST="${PGHOST:-127.0.0.1}"
     export PGPORT="${PGPORT:-5432}"
     export PGUSER="${PGUSER:-agon}"
@@ -523,7 +523,6 @@ export_runtime_env() {
     export HOST="${HOST:-0.0.0.0}"
     export ALLOWED_DEV_ORIGINS="${ALLOWED_DEV_ORIGINS:-$(collect_dev_origins)}"
     export NEXT_TELEMETRY_DISABLED=1
-    export UPLOAD_DIR="${UPLOAD_DIR:-${SCRIPT_DIR}/backend/uploads}"
     sanitize_ld_library_path
 }
 
@@ -631,6 +630,23 @@ CREATE INDEX IF NOT EXISTS sessions_account_live_idx
     ON sessions (account_type, account_id)
     WHERE revoked_at IS NULL;
 CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token);
+CREATE TABLE IF NOT EXISTS uploads (
+    id               BIGSERIAL PRIMARY KEY,
+    public_id        TEXT NOT NULL UNIQUE,
+    original_name    TEXT NOT NULL DEFAULT '',
+    content_type     TEXT NOT NULL DEFAULT 'application/octet-stream',
+    kind             TEXT NOT NULL DEFAULT 'file',
+    unit_name        TEXT NOT NULL DEFAULT '',
+    block_number     TEXT NOT NULL DEFAULT '',
+    block_direction  TEXT NOT NULL DEFAULT '',
+    created_by       TEXT NOT NULL DEFAULT '',
+    byte_size        INTEGER NOT NULL DEFAULT 0,
+    content          BYTEA NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS uploads_created_at_idx ON uploads (created_at);
+CREATE INDEX IF NOT EXISTS uploads_block_idx ON uploads (block_number, block_direction);
+CREATE INDEX IF NOT EXISTS uploads_kind_idx ON uploads (kind);
 SQL
 }
 
@@ -682,7 +698,6 @@ start_backend() {
             DATABASE_URL="${DATABASE_URL}" \
             HOST="${HOST}" \
             PORT="${BACKEND_PORT}" \
-            UPLOAD_DIR="${UPLOAD_DIR}" \
             "${nix_ld}" --library-path "${lib_path}" "${bin}" \
             >"${AGON_DATA}/backend.log" 2>&1 &
     else
@@ -690,7 +705,6 @@ start_backend() {
             DATABASE_URL="${DATABASE_URL}" \
             HOST="${HOST}" \
             PORT="${BACKEND_PORT}" \
-            UPLOAD_DIR="${UPLOAD_DIR}" \
             "${bin}" >"${AGON_DATA}/backend.log" 2>&1 &
     fi
     echo $! >"${AGON_DATA}/backend.pid"

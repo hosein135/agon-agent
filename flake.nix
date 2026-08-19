@@ -45,7 +45,6 @@
             shellHook = ''
               export PGDATA="''${AGON_PGDATA:-$PWD/.agon-data/pg}"
               export DATABASE_URL="''${DATABASE_URL:-host=127.0.0.1 port=5432 dbname=agon user=agon password=agon}"
-              export UPLOAD_DIR="''${UPLOAD_DIR:-$PWD/backend/uploads}"
               export C_INCLUDE_PATH="${pg.dev}/include''${C_INCLUDE_PATH:+:$C_INCLUDE_PATH}"
               export LIBRARY_PATH="${pg.lib}/lib''${LIBRARY_PATH:+:$LIBRARY_PATH}"
               export PKG_CONFIG_PATH="${pg.dev}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"

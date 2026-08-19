@@ -59,6 +59,32 @@ pub fn ensureSessionsTable(allocator: std.mem.Allocator) !void {
     try execOk(allocator, "CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token)");
 }
 
+pub fn ensureUploadsTable(allocator: std.mem.Allocator) !void {
+    try execOk(allocator,
+        \\CREATE TABLE IF NOT EXISTS uploads (
+        \\    id               BIGSERIAL PRIMARY KEY,
+        \\    public_id        TEXT NOT NULL UNIQUE,
+        \\    original_name    TEXT NOT NULL DEFAULT '',
+        \\    content_type     TEXT NOT NULL DEFAULT 'application/octet-stream',
+        \\    kind             TEXT NOT NULL DEFAULT 'file',
+        \\    unit_name        TEXT NOT NULL DEFAULT '',
+        \\    block_number     TEXT NOT NULL DEFAULT '',
+        \\    block_direction  TEXT NOT NULL DEFAULT '',
+        \\    created_by       TEXT NOT NULL DEFAULT '',
+        \\    byte_size        INTEGER NOT NULL DEFAULT 0,
+        \\    content          BYTEA NOT NULL,
+        \\    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+        \\)
+    );
+    try execOk(allocator, "CREATE INDEX IF NOT EXISTS uploads_created_at_idx ON uploads (created_at)");
+    try execOk(allocator, "CREATE INDEX IF NOT EXISTS uploads_block_idx ON uploads (block_number, block_direction)");
+    try execOk(allocator, "CREATE INDEX IF NOT EXISTS uploads_kind_idx ON uploads (kind)");
+}
+
+pub fn purgeExpiredUploads(allocator: std.mem.Allocator) !void {
+    try execOk(allocator, "DELETE FROM uploads WHERE created_at < now() - interval '60 days'");
+}
+
 fn liveUnlocked() !*c.PGconn {
     try connectUnlocked();
     return conn orelse error.PostgresConnect;

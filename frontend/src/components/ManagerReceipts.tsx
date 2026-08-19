@@ -13,8 +13,9 @@ import {
 import { isBillPending, isBillPaid } from '../lib/billStatus'
 import type { AdminUser, ChangedHandler } from '../types'
 
-function isHttpUrl(url) {
-  return /^https?:\/\//i.test(String(url || ''))
+function isFileUrl(url) {
+  const u = String(url || '')
+  return /^https?:\/\//i.test(u) || u.startsWith('/uploads/')
 }
 
 function isDataImage(url) {
@@ -54,7 +55,7 @@ function SafeReceiptPreview({ url, title = 'رسید' }) {
         setOpen(true)
         return
       }
-      if (isHttpUrl(url)) {
+      if (isFileUrl(url)) {
         setBlobUrl(url)
         setOpen(true)
         return
